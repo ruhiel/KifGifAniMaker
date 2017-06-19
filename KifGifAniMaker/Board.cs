@@ -102,31 +102,28 @@ namespace KifGifAniMaker
 			this[1, 3] = new Pawn(BlackWhite.White);
 		}
 
-		public void Next()
-		{
-			_Hand = _Hand == BlackWhite.Black ? BlackWhite.White : BlackWhite.Black;
-		}
+        public void Next() => _Hand = _Hand == BlackWhite.Black ? BlackWhite.White : BlackWhite.Black;
 
-		public string Paint(int idx)
+        public string Paint(int idx)
 		{
 			var path = Path.Combine(Directory.GetCurrentDirectory(), @"result" + idx + ".jpg");
 
 			//画像ファイルを読み込んでImageオブジェクトを作成する
-			using (Bitmap img = new Bitmap(@"img\japanese-chess-b02.jpg"))
-			using (Graphics g = Graphics.FromImage(img))
+			using (var img = new Bitmap(@"img\japanese-chess-b02.jpg"))
+			using (var g = Graphics.FromImage(img))
 			{
-				float baseX = 30.0f;
-				float baseY = 130.0f;
+                const float baseX = 30.0f;
+                const float baseY = 130.0f;
 
 				// 盤
-				for (int i = 0; i < 9; i++)
+				for (var i = 0; i < 9; i++)
 				{
-					for (int j = 0; j < 9; j++)
+					for (var j = 0; j < 9; j++)
 					{
 						var piece = _Pieces[i, j];
 						if (piece != null)
 						{
-							using (Bitmap img2 = new Bitmap(@"img\" + piece.ImageFile))
+							using (var img2 = new Bitmap(@"img\" + piece.ImageFile))
 							{
 								g.DrawImage(img2, new PointF(baseX + j * 60, baseY + i * 64));
 							}
@@ -137,10 +134,10 @@ namespace KifGifAniMaker
 				// 駒台
 				_BlackHands.Sort(ComparePiece);
 				var groups1 = _BlackHands.GroupBy(x => x.GetType());
-				for(int i = 0; i < groups1.Count(); i++)
+				for(var i = 0; i < groups1.Count(); i++)
 				{
 					var group = groups1.ElementAt(i);
-					using (Bitmap img2 = new Bitmap(@"img\" + group.First().ImageFile))
+					using (var img2 = new Bitmap(@"img\" + group.First().ImageFile))
 					{
 						g.DrawImage(img2, new PointF(i * 60, 750.0f));
 					}
@@ -150,10 +147,10 @@ namespace KifGifAniMaker
 
 				_WhiteHands.Sort(ComparePiece);
 				var groups2 = _WhiteHands.GroupBy(x => x.GetType());
-				for (int i = 0; i < groups2.Count(); i++)
+				for (var i = 0; i < groups2.Count(); i++)
 				{
 					var group = groups2.ElementAt(i);
-					using (Bitmap img2 = new Bitmap(@"img\" + group.First().ImageFile))
+					using (var img2 = new Bitmap(@"img\" + group.First().ImageFile))
 					{
 						g.DrawImage(img2, new PointF(i * 60, 0.0f));
 					}
@@ -177,12 +174,12 @@ namespace KifGifAniMaker
 
 			using (var bmp = new Bitmap(tmp))
 			{
-				int resizeWidth = (int)(bmp.Width * _Rate);
+				var resizeWidth = (int)(bmp.Width * _Rate);
 
-				int resizeHeight = (int)(bmp.Height * _Rate);
+				var resizeHeight = (int)(bmp.Height * _Rate);
 
 				using (var resizeBmp = new Bitmap(resizeWidth, resizeHeight))
-				using (Graphics g = Graphics.FromImage(resizeBmp))
+				using (var g = Graphics.FromImage(resizeBmp))
 				{
 					g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
 					g.DrawImage(bmp, 0, 0, resizeWidth, resizeHeight);
@@ -204,10 +201,10 @@ namespace KifGifAniMaker
 			}
 			else if(count > 9)
 			{
-				int degit10 = count / 10;
-				int degit1 = count % 10;
-				using (Bitmap img10 = new Bitmap(@"img\" + "number3_4" + degit10 + ".png"))
-				using (Bitmap img1 = new Bitmap(@"img\" + "number3_4" + degit1 + ".png"))
+				var degit10 = count / 10;
+				var degit1 = count % 10;
+				using (var img10 = new Bitmap(@"img\" + "number3_4" + degit10 + ".png"))
+				using (var img1 = new Bitmap(@"img\" + "number3_4" + degit1 + ".png"))
 				{
 					g.DrawImage(img10, new PointF(index * 60 + 55, bw == BlackWhite.Black ? 750.0f : 0.0f));
 					g.DrawImage(img1, new PointF(index * 60 + 65, bw == BlackWhite.Black ? 750.0f : 0.0f));
@@ -216,7 +213,7 @@ namespace KifGifAniMaker
 			}
 			else
 			{
-				using (Bitmap img1 = new Bitmap(@"img\" + "number3_4" + count + ".png"))
+				using (var img1 = new Bitmap(@"img\" + "number3_4" + count + ".png"))
 				{
 					g.DrawImage(img1, new PointF(index * 60 + 55, bw == BlackWhite.Black ? 750.0f : 0.0f));
 				}
@@ -234,17 +231,33 @@ namespace KifGifAniMaker
 		{
 			get
 			{
-				if (x < 1 || x > 9) throw new IndexOutOfRangeException();
-				if (y < 1 || y > 9) throw new IndexOutOfRangeException();
-				x = 9 - x;
+				if (x < 1 || x > 9)
+                {
+                    throw new IndexOutOfRangeException();
+                }
+
+                if (y < 1 || y > 9)
+                {
+                    throw new IndexOutOfRangeException();
+                }
+
+                x = 9 - x;
 				y -= 1;
 				return _Pieces[y, x];
 			}
 			set
 			{
-				if (x < 1 || x > 9) throw new IndexOutOfRangeException();
-				if (y < 1 || y > 9) throw new IndexOutOfRangeException();
-				x = 9 - x;
+				if (x < 1 || x > 9)
+                {
+                    throw new IndexOutOfRangeException();
+                }
+
+                if (y < 1 || y > 9)
+                {
+                    throw new IndexOutOfRangeException();
+                }
+
+                x = 9 - x;
 				y -= 1;
 				_Pieces[y, x] = value;
 			}
@@ -258,7 +271,7 @@ namespace KifGifAniMaker
 			var numeric = "１２３４５６７８９";
 			var numericKan = "一二三四五六七八九";
 			// ファイルからテキストを読み出し。
-			using (StreamReader r = new StreamReader(filePath, System.Text.Encoding.GetEncoding("shift-jis")))
+			using (var r = new StreamReader(filePath, System.Text.Encoding.GetEncoding("shift-jis")))
 			{
 				string line;
 				while ((line = r.ReadLine()) != null) // 1行ずつ読み出し。
@@ -355,7 +368,7 @@ namespace KifGifAniMaker
 			var moves = ReadFile(filePath);
 			images.Add(Paint(0));
 
-			for(int i = 0; i < moves.Count; i++)
+			for(var i = 0; i < moves.Count; i++)
 			{
 				Move(moves[i]);
 				images.Add(Paint(i + 1));
@@ -366,9 +379,9 @@ namespace KifGifAniMaker
 
 		public IEnumerator<Piece> GetEnumerator()
 		{
-			for (int i = 0; i < 9; i++)
+			for (var i = 0; i < 9; i++)
 			{
-				for (int j = 0; j < 9; j++)
+				for (var j = 0; j < 9; j++)
 				{
 					yield return _Pieces[i, j];
 				}
@@ -385,24 +398,24 @@ namespace KifGifAniMaker
 		public void CreateAnimatedGif(string savePath, IEnumerable<string> imageFiles)
 		{
 			//GifBitmapEncoderを作成する
-			GifBitmapEncoder encoder = new GifBitmapEncoder();
+			var encoder = new GifBitmapEncoder();
 
-			foreach (string f in imageFiles)
+			foreach (var f in imageFiles)
 			{
 				//画像ファイルからBitmapFrameを作成する
-				BitmapFrame bmpFrame =
+				var bmpFrame =
 					BitmapFrame.Create(new Uri(f, UriKind.RelativeOrAbsolute));
 				//フレームに追加する
 				encoder.Frames.Add(bmpFrame);
 			}
 
-			//書き込むファイルを開く
-			FileStream outputFileStrm = new FileStream(savePath,
-				FileMode.Create, FileAccess.Write, FileShare.None);
-			//保存する
-			encoder.Save(outputFileStrm);
-			//閉じる
-			outputFileStrm.Close();
+            //書き込むファイルを開く
+            using (var outputFileStrm = new FileStream(savePath,
+                FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                //保存する
+                encoder.Save(outputFileStrm);
+            }
 		}
 	}
 }
