@@ -104,7 +104,7 @@ namespace KifGifAniMaker
 
         public void Next() => _Hand = _Hand == BlackWhite.Black ? BlackWhite.White : BlackWhite.Black;
 
-        public string Paint(int idx)
+        public string Paint(int idx, List<ParseResult> moves)
 		{
 			var path = Path.Combine(Directory.GetCurrentDirectory(), @"result" + idx + ".jpg");
 
@@ -158,6 +158,12 @@ namespace KifGifAniMaker
 					DrawNum(g, group.Count(), i, BlackWhite.White);
 				}
 
+                var move = "";
+                if(idx != 0 && moves.Count > idx - 1)
+                {
+                    move = moves[idx - 1].Move;
+                }
+                g.DrawString(move, new Font("MS UI Gothic", 20), Brushes.Black, 600, 100);
 
 				//作成した画像を保存する
 				img.Save(path);
@@ -279,7 +285,6 @@ namespace KifGifAniMaker
 					var match = regex.Match(line);
 					if (match.Success)
 					{
-						Console.WriteLine(line);
 						var result = new ParseResult();
 						result.Position = match.Groups["pos"].Value.Trim();
 						if (result.Position != "同")
@@ -289,17 +294,17 @@ namespace KifGifAniMaker
 						}
 						result.Promoted = match.Groups["promoted"].Value == "成";
 						result.Piece = match.Groups["piece"].Value;
-						var action = match.Groups["action"].Value;
+                        result.ActionString = match.Groups["action"].Value;
 
-						if (action == "不成")
+						if (result.ActionString == "不成")
 						{
 							result.Action = Action.NoPromote;
 						}
-						else if (action == "成")
+						else if (result.ActionString == "成")
 						{
 							result.Action = Action.Promote;
 						}
-						else if (action == "打")
+						else if (result.ActionString == "打")
 						{
 							result.Action = Action.Drops;
 						}
@@ -366,12 +371,12 @@ namespace KifGifAniMaker
 		{
 			var images = new List<string>();
 			var moves = ReadFile(filePath);
-			images.Add(Paint(0));
+			images.Add(Paint(0, moves));
 
 			for(var i = 0; i < moves.Count; i++)
 			{
 				Move(moves[i]);
-				images.Add(Paint(i + 1));
+				images.Add(Paint(i + 1, moves));
 			}
 
 			CreateAnimatedGif("result.gif", images);
