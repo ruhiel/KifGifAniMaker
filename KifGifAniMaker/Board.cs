@@ -6,6 +6,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.Windows.Media.Imaging;
+using System.Drawing.Imaging;
 
 namespace KifGifAniMaker
 {
@@ -106,10 +107,10 @@ namespace KifGifAniMaker
 
         public string Paint(int idx, List<ParseResult> moves)
 		{
-			var path = Path.Combine(Directory.GetCurrentDirectory(), @"result" + idx + ".jpg");
+			var path = Path.Combine(Directory.GetCurrentDirectory(), @"result" + idx + ".png");
 
 			//画像ファイルを読み込んでImageオブジェクトを作成する
-			using (var img = new Bitmap(@"img\japanese-chess-b02.jpg"))
+			using (var img = new Bitmap(@"img\japanese-chess-b02.png"))
 			using (var g = Graphics.FromImage(img))
 			{
                 const float baseX = 30.0f;
@@ -166,7 +167,7 @@ namespace KifGifAniMaker
                 g.DrawString(move, new Font("MS UI Gothic", 20), Brushes.Black, 600, 100);
 
 				//作成した画像を保存する
-				img.Save(path);
+				img.Save(path, ImageFormat.Png);
 			}
 
 			var tmp = Path.Combine(Path.GetDirectoryName(path) , Path.GetFileName(path) + ".tmp");
@@ -190,7 +191,7 @@ namespace KifGifAniMaker
 					g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
 					g.DrawImage(bmp, 0, 0, resizeWidth, resizeHeight);
 
-					resizeBmp.Save(path, System.Drawing.Imaging.ImageFormat.Jpeg);
+					resizeBmp.Save(path, ImageFormat.Png);
 				}
 			}
 
@@ -272,7 +273,7 @@ namespace KifGifAniMaker
 		public List<ParseResult> ReadFile(string filePath)
 		{
 			var list = new List<ParseResult>();
-			var pattern = @"^\s+[0-9]+\s(?<pos>同\s*|(?<dstPosX>[１２３４５６７８９])(?<dstPosY>[一二三四五六七八九]))(?<promoted>成)?(?<piece>[玉飛角金銀桂香歩龍馬と])[右左]?[上直寄引]?(?<action>不?成|打)?(?<srcPos>\((?<srcPosX>[1-9])(?<srcPosY>[1-9])\))?";
+			var pattern = @"^\s*[0-9]+\s(?<pos>同\s*|(?<dstPosX>[１２３４５６７８９])(?<dstPosY>[一二三四五六七八九]))(?<promoted>成)?(?<piece>[玉飛角金銀桂香歩龍馬と])[右左]?[上直寄引]?(?<action>不?成|打)?(?<srcPos>\((?<srcPosX>[1-9])(?<srcPosY>[1-9])\))?";
 			var regex = new Regex(pattern);
 			var numeric = "１２３４５６７８９";
 			var numericKan = "一二三四五六七八九";
@@ -379,7 +380,7 @@ namespace KifGifAniMaker
 				images.Add(Paint(i + 1, moves));
 			}
 
-			CreateAnimatedGif("result.gif", images);
+			//CreateAnimatedGif("result.gif", images);
 		}
 
 		public IEnumerator<Piece> GetEnumerator()
