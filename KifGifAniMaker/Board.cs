@@ -159,12 +159,22 @@ namespace KifGifAniMaker
 					DrawNum(g, group.Count(), i, BlackWhite.White);
 				}
 
+                if (--idx < 0)
+                {
+                    idx = 0;
+                }
+
+                foreach(var element in  moves.Skip(idx).Take(10).Select((move , index) => new { move, index }))
+                {
+                    g.DrawString($"{element.move.MoveNum} {element.move.BlackWhite.ToSymbol()} {element.move.Move}", new Font("MS UI Gothic", 24), Brushes.Black, 600, 100 + element.index * 60);
+                }
+                /*
                 var move = "";
                 if(idx != 0 && moves.Count > idx - 1)
                 {
                     move = moves[idx - 1].Move;
-                }
-                g.DrawString(move, new Font("MS UI Gothic", 20), Brushes.Black, 600, 100);
+                }*/
+                
 
 				//作成した画像を保存する
 				img.Save(path, ImageFormat.Png);
@@ -273,7 +283,7 @@ namespace KifGifAniMaker
 		public List<ParseResult> ReadFile(string filePath)
 		{
 			var list = new List<ParseResult>();
-			var pattern = @"^\s*[0-9]+\s(?<pos>同\s*|(?<dstPosX>[１２３４５６７８９])(?<dstPosY>[一二三四五六七八九]))(?<promoted>成)?(?<piece>[玉飛角金銀桂香歩龍馬と])[右左]?[上直寄引]?(?<action>不?成|打)?(?<srcPos>\((?<srcPosX>[1-9])(?<srcPosY>[1-9])\))?";
+			var pattern = @"^\s*(?<movenum>[0-9]+)\s(?<pos>同\s*|(?<dstPosX>[１２３４５６７８９])(?<dstPosY>[一二三四五六七八九]))(?<promoted>成)?(?<piece>[玉飛角金銀桂香歩龍馬と])[右左]?[上直寄引]?(?<action>不?成|打)?(?<srcPos>\((?<srcPosX>[1-9])(?<srcPosY>[1-9])\))?";
 			var regex = new Regex(pattern);
 			var numeric = "１２３４５６７８９";
 			var numericKan = "一二三四五六七八九";
@@ -281,12 +291,14 @@ namespace KifGifAniMaker
 			using (var r = new StreamReader(filePath, System.Text.Encoding.GetEncoding("shift-jis")))
 			{
 				string line;
+                var bw = BlackWhite.Black;
 				while ((line = r.ReadLine()) != null) // 1行ずつ読み出し。
 				{
 					var match = regex.Match(line);
 					if (match.Success)
 					{
-						var result = new ParseResult();
+                        var result = new ParseResult(bw, int.Parse(match.Groups["movenum"].Value.Trim()));
+                        
 						result.Position = match.Groups["pos"].Value.Trim();
 						if (result.Position != "同")
 						{
@@ -316,7 +328,8 @@ namespace KifGifAniMaker
 						}
 
 						list.Add(result);
-					}
+                        bw = bw.Reverse();
+                    }
 				}
 			}
 

@@ -9,6 +9,7 @@ namespace KifGifAniMaker
 	public class ParseResult
 	{
         public string Move => Position + Piece + ActionString;
+        public BlackWhite BlackWhite { get; set; }
         public string Position { get; set; }
 		public int DestPosX { get; set; }
 		public int DestPosY { get; set; }
@@ -18,5 +19,11 @@ namespace KifGifAniMaker
 		public int? SrcPosX { get; set; }
 		public int? SrcPosY { get; set; }
         public string ActionString { get; set; }
+        public int MoveNum { get; set; }
+        public ParseResult(BlackWhite bw, int moveNum)
+        {
+            BlackWhite = bw;
+            MoveNum = moveNum;
+        }
     }
 }
