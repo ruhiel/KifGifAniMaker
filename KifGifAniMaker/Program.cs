@@ -15,7 +15,7 @@ namespace KifGifAniMaker
 		{
 			var board = new Board();
 			board.InitBoard();
-			board.MakeGif(args[0]);
+			board.MakeAnimation(args[0]);
 		}
 	}
 }

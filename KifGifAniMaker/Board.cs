@@ -105,7 +105,7 @@ namespace KifGifAniMaker
 
         public void Next() => _Hand = _Hand == BlackWhite.Black ? BlackWhite.White : BlackWhite.Black;
 
-        public string Paint(int idx, List<ParseResult> moves)
+        public string Paint(int idx, Record record)
 		{
 			var path = Path.Combine(Directory.GetCurrentDirectory(), @"result" + idx + ".png");
 
@@ -159,25 +159,22 @@ namespace KifGifAniMaker
 					DrawNum(g, group.Count(), i, BlackWhite.White);
 				}
 
-                if (--idx < 0)
+                if (record.Moves[idx].ActionString != "投了")
                 {
-                    idx = 0;
+                    g.DrawRectangle(new Pen(Brushes.Red, 2), new Rectangle((int)baseX + (9 - record.Moves[idx].DestPosX) * 60, (int)baseY + (record.Moves[idx].DestPosY - 1) * 64, 60, 64));
                 }
 
-                foreach(var element in  moves.Skip(idx).Take(10).Select((move , index) => new { move, index }))
-                {
-                    g.DrawString($"{element.move.MoveNum} {element.move.BlackWhite.ToSymbol()} {element.move.Move}", new Font("MS UI Gothic", 24), Brushes.Black, 600, 100 + element.index * 60);
-                }
-                /*
-                var move = "";
-                if(idx != 0 && moves.Count > idx - 1)
-                {
-                    move = moves[idx - 1].Move;
-                }*/
-                
+                g.DrawString($"▽{record.WhitePlayer}", new Font("MS UI Gothic", 24), Brushes.Black, 600, 40);
 
-				//作成した画像を保存する
-				img.Save(path, ImageFormat.Png);
+                foreach (var element in record.Moves.Skip(idx).Take(10).Select((move , index) => new { move, index }))
+                {
+                    g.DrawString($"{element.move.MoveNum} {element.move.BlackWhite.ToSymbol()} {element.move.MoveString}", new Font("MS UI Gothic", 24), Brushes.Black, 600, 100 + element.index * 60);
+                }
+
+                g.DrawString($"▲{record.BlackPlayer}", new Font("MS UI Gothic", 24), Brushes.Black, 600, 700);
+
+                //作成した画像を保存する
+                img.Save(path, ImageFormat.Png);
 			}
 
 			var tmp = Path.Combine(Path.GetDirectoryName(path) , Path.GetFileName(path) + ".tmp");
@@ -234,7 +231,6 @@ namespace KifGifAniMaker
 				{
 					g.DrawImage(img1, new PointF(index * 60 + 55, bw == BlackWhite.Black ? 750.0f : 0.0f));
 				}
-				
 			}
 		}
 
@@ -280,76 +276,118 @@ namespace KifGifAniMaker
 			}
 		}
 
-		public List<ParseResult> ReadFile(string filePath)
+		public Record ReadFile(string filePath)
 		{
-			var list = new List<ParseResult>();
+            var record = new Record();
+			var list = new List<Move>();
 			var pattern = @"^\s*(?<movenum>[0-9]+)\s(?<pos>同\s*|(?<dstPosX>[１２３４５６７８９])(?<dstPosY>[一二三四五六七八九]))(?<promoted>成)?(?<piece>[玉飛角金銀桂香歩龍馬と])[右左]?[上直寄引]?(?<action>不?成|打)?(?<srcPos>\((?<srcPosX>[1-9])(?<srcPosY>[1-9])\))?";
-			var regex = new Regex(pattern);
+            var pleyerPattern = @"(?<bw>先手|後手)：(?<name>.+)";
+            var regex = new Regex(pattern);
+            var playerRegex = new Regex(pleyerPattern);
 			var numeric = "１２３４５６７８９";
 			var numericKan = "一二三四五六七八九";
-			// ファイルからテキストを読み出し。
-			using (var r = new StreamReader(filePath, System.Text.Encoding.GetEncoding("shift-jis")))
+            var resignPattern = @"^\s*(?<movenum>[0-9]+)\s*投了";
+            var resignRegex = new Regex(resignPattern);
+
+            // ファイルからテキストを読み出し。
+            using (var r = new StreamReader(filePath, System.Text.Encoding.GetEncoding("shift-jis")))
 			{
 				string line;
                 var bw = BlackWhite.Black;
-				while ((line = r.ReadLine()) != null) // 1行ずつ読み出し。
-				{
-					var match = regex.Match(line);
-					if (match.Success)
-					{
-                        var result = new ParseResult(bw, int.Parse(match.Groups["movenum"].Value.Trim()));
-                        
-						result.Position = match.Groups["pos"].Value.Trim();
-						if (result.Position != "同")
-						{
-							result.DestPosX = numeric.IndexOf(match.Groups["dstPosX"].Value) + 1;
-							result.DestPosY = numericKan.IndexOf(match.Groups["dstPosY"].Value) + 1;
-						}
-						result.Promoted = match.Groups["promoted"].Value == "成";
-						result.Piece = match.Groups["piece"].Value;
-                        result.ActionString = match.Groups["action"].Value;
+                var oldDestPosX = 0;
+                var oldDestPosY = 0;
+                while ((line = r.ReadLine()) != null) // 1行ずつ読み出し。
+                {
+                    var match = regex.Match(line);
+                    if (match.Success)
+                    {
+                        var move = new Move(bw, int.Parse(match.Groups["movenum"].Value.Trim()));
 
-						if (result.ActionString == "不成")
-						{
-							result.Action = Action.NoPromote;
-						}
-						else if (result.ActionString == "成")
-						{
-							result.Action = Action.Promote;
-						}
-						else if (result.ActionString == "打")
-						{
-							result.Action = Action.Drops;
-						}
-						if (!string.IsNullOrEmpty(match.Groups["srcPos"].Value))
-						{
-							result.SrcPosX = int.Parse(match.Groups["srcPosX"].Value);
-							result.SrcPosY = int.Parse(match.Groups["srcPosY"].Value);
-						}
+                        move.Position = match.Groups["pos"].Value.Trim();
+                        if (move.Position != "同")
+                        {
+                            move.DestPosX = numeric.IndexOf(match.Groups["dstPosX"].Value) + 1;
+                            move.DestPosY = numericKan.IndexOf(match.Groups["dstPosY"].Value) + 1;
+                            oldDestPosX = move.DestPosX;
+                            oldDestPosY = move.DestPosY;
+                        }
+                        else
+                        {
+                            move.DestPosX = oldDestPosX;
+                            move.DestPosY = oldDestPosY;
+                        }
+                        move.Promoted = match.Groups["promoted"].Value == "成";
+                        move.Piece = match.Groups["piece"].Value;
+                        move.ActionString = match.Groups["action"].Value;
 
-						list.Add(result);
+                        if (move.ActionString == "不成")
+                        {
+                            move.Action = Action.NoPromote;
+                        }
+                        else if (move.ActionString == "成")
+                        {
+                            move.Action = Action.Promote;
+                        }
+                        else if (move.ActionString == "打")
+                        {
+                            move.Action = Action.Drops;
+                        }
+                        if (!string.IsNullOrEmpty(match.Groups["srcPos"].Value))
+                        {
+                            move.SrcPosX = int.Parse(match.Groups["srcPosX"].Value);
+                            move.SrcPosY = int.Parse(match.Groups["srcPosY"].Value);
+                        }
+
+                        list.Add(move);
                         bw = bw.Reverse();
                     }
-				}
+
+                    match = playerRegex.Match(line);
+                    if (match.Success)
+                    {
+                        var player = match.Groups["bw"].Value.Trim();
+                        if (player == "先手")
+                        {
+                            record.BlackPlayer = match.Groups["name"].Value.Trim();
+                        }
+                        else
+                        {
+                            record.WhitePlayer = match.Groups["name"].Value.Trim();
+                        }
+                    }
+
+                    match = resignRegex.Match(line);
+                    if (match.Success)
+                    {
+                        var move = new Move(bw, int.Parse(match.Groups["movenum"].Value.Trim()));
+                        move.ActionString = "投了";
+                        list.Add(move);
+                    }
+                }
 			}
 
-			return list;
+            record.Moves = list;
+
+            return record;
 		}
 
-		public void Move(ParseResult parseResult)
+		public void Move(Move move)
 		{
-			var destPosX = parseResult.DestPosX;
-			var destPosY = parseResult.DestPosY;
-
-			if (parseResult.Action == Action.Drops)
+			var destPosX = move.DestPosX;
+			var destPosY = move.DestPosY;
+            if(move.ActionString == "投了")
+            {
+                return;
+            }
+			if (move.Action == Action.Drops)
 			{
-				var piece = GetHands().First(x => x.GetType() == _PieceDictionary[parseResult.Piece]);
+				var piece = GetHands().First(x => x.GetType() == _PieceDictionary[move.Piece]);
 				this[destPosX, destPosY] = piece;
 				GetHands().Remove(piece);
 			}
 			else
 			{
-				if(parseResult.Position == "同")
+				if(move.Position == "同")
 				{
 					destPosX = _OldPosition.Item1;
 					destPosY = _OldPosition.Item2;
@@ -365,15 +403,15 @@ namespace KifGifAniMaker
 					GetHands().Add(piece);
 				}
 
-				this[destPosX, destPosY] = this[parseResult.SrcPosX.Value, parseResult.SrcPosY.Value];
+				this[destPosX, destPosY] = this[move.SrcPosX.Value, move.SrcPosY.Value];
 
-				if (parseResult.Action == Action.Promote)
+				if (move.Action == Action.Promote)
 				{
 					// 成
 					this[destPosX, destPosY].Promote();
 				}
 
-				this[parseResult.SrcPosX.Value, parseResult.SrcPosY.Value] = null;
+				this[move.SrcPosX.Value, move.SrcPosY.Value] = null;
 			}
 
 			_OldPosition = Tuple.Create(destPosX, destPosY);
@@ -381,19 +419,16 @@ namespace KifGifAniMaker
 			Next();
 		}
 
-		public void MakeGif(string filePath)
+		public void MakeAnimation(string filePath)
 		{
 			var images = new List<string>();
-			var moves = ReadFile(filePath);
-			images.Add(Paint(0, moves));
+			var record = ReadFile(filePath);
 
-			for(var i = 0; i < moves.Count; i++)
+			for(var i = 0; i < record.Moves.Count; i++)
 			{
-				Move(moves[i]);
-				images.Add(Paint(i + 1, moves));
+				Move(record.Moves[i]);
+				images.Add(Paint(i, record));
 			}
-
-			//CreateAnimatedGif("result.gif", images);
 		}
 
 		public IEnumerator<Piece> GetEnumerator()
