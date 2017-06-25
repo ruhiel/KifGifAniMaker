@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Linq;
 using System.Windows.Media.Imaging;
 using System.Drawing.Imaging;
+using System.Diagnostics;
 
 namespace KifGifAniMaker
 {
@@ -39,7 +40,8 @@ namespace KifGifAniMaker
 
 		private Tuple<int, int> _OldPosition;
 
-		private Dictionary<string, Type> _PieceDictionary = new Dictionary<string, Type>() {
+		private Dictionary<string, Type> _PieceDictionary = new Dictionary<string, Type>()
+        {
 			{"玉", typeof(King)},
 			{"金", typeof(Gold)},
 			{"銀", typeof(Silver)},
@@ -103,11 +105,11 @@ namespace KifGifAniMaker
 			this[1, 3] = new Pawn(BlackWhite.White);
 		}
 
-        public void Next() => _Hand = _Hand == BlackWhite.Black ? BlackWhite.White : BlackWhite.Black;
+        public void Next() => _Hand = _Hand.Reverse();
 
         public string Paint(int idx, Record record)
 		{
-			var path = Path.Combine(Directory.GetCurrentDirectory(), @"result" + idx + ".png");
+            var path = Path.Combine(Path.GetTempPath(), $"result{idx.ToString()}.png");
 
 			//画像ファイルを読み込んでImageオブジェクトを作成する
 			using (var img = new Bitmap(@"img\japanese-chess-b02.png"))
@@ -429,7 +431,26 @@ namespace KifGifAniMaker
 				Move(record.Moves[i]);
 				images.Add(Paint(i, record));
 			}
-		}
+
+            var argument = $"-r 2 -i {Path.Combine(Path.GetTempPath(), "result%d.png")} -vcodec libx264 -pix_fmt yuv420p -r 30 -y {Path.Combine(Directory.GetCurrentDirectory(), "out.mp4")}";
+
+            var psInfo = new ProcessStartInfo()
+            {
+                FileName = @"ffmpeg",    // 実行するファイル 
+                Arguments = argument,    // コマンドパラメータ（引数）
+                CreateNoWindow = true,    // コンソール・ウィンドウを開かない
+                UseShellExecute = false,  // シェル機能を使用しない
+            };
+
+            var p = Process.Start(psInfo);
+            p.WaitForExit();
+            Console.WriteLine(p.ExitCode);
+
+            foreach (var png in images)
+            {
+                File.Delete(png);
+            }
+        }
 
 		public IEnumerator<Piece> GetEnumerator()
 		{
