@@ -8,6 +8,7 @@ using System.Linq;
 using System.Windows.Media.Imaging;
 using System.Drawing.Imaging;
 using System.Diagnostics;
+using KifGifAniMaker.KifParser;
 
 namespace KifGifAniMaker
 {
@@ -278,101 +279,6 @@ namespace KifGifAniMaker
 			}
 		}
 
-		public Record ReadFile(string filePath)
-		{
-            var record = new Record();
-			var list = new List<Move>();
-			var pattern = @"^\s*(?<movenum>[0-9]+)\s(?<pos>同\s*|(?<dstPosX>[１２３４５６７８９])(?<dstPosY>[一二三四五六七八九]))(?<promoted>成)?(?<piece>[玉飛角金銀桂香歩龍馬と])[右左]?[上直寄引]?(?<action>不?成|打)?(?<srcPos>\((?<srcPosX>[1-9])(?<srcPosY>[1-9])\))?";
-            var pleyerPattern = @"(?<bw>先手|後手)：(?<name>.+)";
-            var regex = new Regex(pattern);
-            var playerRegex = new Regex(pleyerPattern);
-			var numeric = "１２３４５６７８９";
-			var numericKan = "一二三四五六七八九";
-            var resignPattern = @"^\s*(?<movenum>[0-9]+)\s*投了";
-            var resignRegex = new Regex(resignPattern);
-
-            // ファイルからテキストを読み出し。
-            using (var r = new StreamReader(filePath, System.Text.Encoding.GetEncoding("shift-jis")))
-			{
-				string line;
-                var bw = BlackWhite.Black;
-                var oldDestPosX = 0;
-                var oldDestPosY = 0;
-                while ((line = r.ReadLine()) != null) // 1行ずつ読み出し。
-                {
-                    var match = regex.Match(line);
-                    if (match.Success)
-                    {
-                        var move = new Move(bw, int.Parse(match.Groups["movenum"].Value.Trim()));
-
-                        move.Position = match.Groups["pos"].Value.Trim();
-                        if (move.Position != "同")
-                        {
-                            move.DestPosX = numeric.IndexOf(match.Groups["dstPosX"].Value) + 1;
-                            move.DestPosY = numericKan.IndexOf(match.Groups["dstPosY"].Value) + 1;
-                            oldDestPosX = move.DestPosX;
-                            oldDestPosY = move.DestPosY;
-                        }
-                        else
-                        {
-                            move.DestPosX = oldDestPosX;
-                            move.DestPosY = oldDestPosY;
-                        }
-                        move.Promoted = match.Groups["promoted"].Value == "成";
-                        move.Piece = match.Groups["piece"].Value;
-                        move.ActionString = match.Groups["action"].Value;
-
-                        if (move.ActionString == "不成")
-                        {
-                            move.Action = Action.NoPromote;
-                        }
-                        else if (move.ActionString == "成")
-                        {
-                            move.Action = Action.Promote;
-                        }
-                        else if (move.ActionString == "打")
-                        {
-                            move.Action = Action.Drops;
-                        }
-                        if (!string.IsNullOrEmpty(match.Groups["srcPos"].Value))
-                        {
-                            move.SrcPosX = int.Parse(match.Groups["srcPosX"].Value);
-                            move.SrcPosY = int.Parse(match.Groups["srcPosY"].Value);
-                        }
-
-                        list.Add(move);
-                        bw = bw.Reverse();
-                    }
-
-                    match = playerRegex.Match(line);
-                    if (match.Success)
-                    {
-                        var player = match.Groups["bw"].Value.Trim();
-                        if (player == "先手")
-                        {
-                            record.BlackPlayer = match.Groups["name"].Value.Trim();
-                        }
-                        else
-                        {
-                            record.WhitePlayer = match.Groups["name"].Value.Trim();
-                        }
-                    }
-
-                    match = resignRegex.Match(line);
-                    if (match.Success)
-                    {
-                        var move = new Move(bw, int.Parse(match.Groups["movenum"].Value.Trim()));
-                        move.ActionString = "投了";
-                        list.Add(move);
-                    }
-                }
-			}
-
-            record.Moves = list;
-
-            return record;
-		}
-
 		public void Move(Move move)
 		{
 			var destPosX = move.DestPosX;
@@ -421,18 +327,27 @@ namespace KifGifAniMaker
 			Next();
 		}
 
-		public void MakeAnimation(string filePath)
+		public void MakeAnimation(Options options)
 		{
-			var images = new List<string>();
-			var record = ReadFile(filePath);
+            var images = new List<string>();
 
-			for(var i = 0; i < record.Moves.Count; i++)
+            var record = KifParserFactory.Create(options).ReadFile();
+
+            Console.WriteLine("棋譜画像出力中");
+            var sw = new Stopwatch();
+            sw.Start();
+            for (var i = 0; i < record.Moves.Count; i++)
 			{
 				Move(record.Moves[i]);
 				images.Add(Paint(i, record));
 			}
+            Console.WriteLine($"棋譜画像出力完了:{sw.Elapsed}");
+            Console.WriteLine("棋譜動画出力中");
+            sw.Restart();
 
-            var argument = $"-r 2 -i {Path.Combine(Path.GetTempPath(), "result%d.png")} -vcodec libx264 -pix_fmt yuv420p -r 30 -y {Path.Combine(Directory.GetCurrentDirectory(), "out.mp4")}";
+            var outFile = options.OutputFile ?? Path.Combine(Directory.GetCurrentDirectory(), $"{Path.GetFileNameWithoutExtension(options.InputFile)}.mp4");
+
+            var argument = $"-r 1 -i {Path.Combine(Path.GetTempPath(), "result%d.png")} -vcodec libx264 -pix_fmt yuv420p -r 30 -y {outFile}";
 
             var psInfo = new ProcessStartInfo()
             {
@@ -444,12 +359,13 @@ namespace KifGifAniMaker
 
             var p = Process.Start(psInfo);
             p.WaitForExit();
-            Console.WriteLine(p.ExitCode);
+            Console.WriteLine($"ffmpeg実行結果:{p.ExitCode}");
 
             foreach (var png in images)
             {
                 File.Delete(png);
             }
+            Console.WriteLine($"棋譜動画出力完了:{sw.Elapsed}");
         }
 
 		public IEnumerator<Piece> GetEnumerator()

@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
+using CommandLine;
 
 namespace KifGifAniMaker
 {
@@ -13,9 +14,13 @@ namespace KifGifAniMaker
 	{
 		static void Main(string[] args)
 		{
-			var board = new Board();
-			board.InitBoard();
-			board.MakeAnimation(args[0]);
+            var options = new Options();
+            if (Parser.Default.ParseArguments(args, options))
+            {
+                var board = new Board();
+                board.InitBoard();
+                board.MakeAnimation(options);
+            }
 		}
 	}
 }
